@@ -1,0 +1,10 @@
+{
+  "name": "わたしの買い物メモ",
+  "short_name": "買い物メモ",
+  "description": "迷わず使える、やさしい買い物メモ",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fbf8f0",
+  "theme_color": "#386c57",
+  "lang": "ja"
+}
