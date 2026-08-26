@@ -33,6 +33,7 @@ type Product = {
 };
 type Data = { memos: Memo[]; products: Product[] };
 type Screen = "home" | "edit" | "shopping" | "review" | "history" | "products";
+type CalculatorMode = "discount" | "compare" | "total";
 
 const baseProducts = [
   ["牛乳", "ぎゅうにゅう"],
@@ -416,6 +417,7 @@ export default function App() {
           <p className="hint">
             買えたものは、あとからまとめて記録しても大丈夫です。
           </p>
+          <ShoppingCalculator />
           <div className="shoppingList">
             {selected.items.map((i) => (
               <button
@@ -839,3 +841,36 @@ function Products({ products }: { products: Product[] }) {
     </section>
   );
 }
+
+function ShoppingCalculator() {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<CalculatorMode>("discount");
+  const [price, setPrice] = useState("1000");
+  const [rate, setRate] = useState("20");
+  const [tax, setTax] = useState("10");
+  const [taxDirection, setTaxDirection] = useState<"add" | "remove">("add");
+  const [a, setA] = useState({ price: "300", amount: "80", count: "2" });
+  const [b, setB] = useState({ price: "120", amount: "60", count: "1" });
+  const [unit, setUnit] = useState("g");
+  const [total, setTotal] = useState(["", "", ""]);
+  if (!open) return <button className="calculator-launch" onClick={() => setOpen(true)}>🧮 <span>計算</span><small>割引・税込み・価格比較</small></button>;
+  const discountPrice = Number(price) || 0;
+  const discountRate = Number(rate) || 0;
+  const discountResult = Math.round(discountPrice * (1 - discountRate / 100));
+  const taxValue = Number(tax) || 0;
+  const taxResult = taxDirection === "add" ? Math.round(discountPrice * (1 + taxValue / 100)) : Math.round(discountPrice / (1 + taxValue / 100));
+  const unitPrice = (item: typeof a) => {
+    const amount = (Number(item.amount) || 0) * (Number(item.count) || 0);
+    return amount > 0 ? (Number(item.price) || 0) / amount * 100 : 0;
+  };
+  const unitA = unitPrice(a), unitB = unitPrice(b);
+  const totalResult = total.reduce((sum, item) => sum + (Number(item) || 0), 0);
+  return <section className="calculator"><div className="calculator-head"><strong>買い物中の計算</strong><button onClick={() => setOpen(false)} aria-label="電卓を閉じる">×</button></div>
+    <div className="calculator-tabs"><button className={mode === "discount" ? "selected" : ""} onClick={() => setMode("discount")}>割引・税込み</button><button className={mode === "compare" ? "selected" : ""} onClick={() => setMode("compare")}>価格比較</button><button className={mode === "total" ? "selected" : ""} onClick={() => setMode("total")}>合計</button></div>
+    {mode === "discount" && <div className="calculator-body"><div className="calc-grid"><label>金額<input inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} /></label><label>割引率（%）<input inputMode="decimal" value={rate} onChange={e => setRate(e.target.value)} /></label></div><div className="quick-rates">{[10,20,30,50].map(x => <button key={x} onClick={() => setRate(String(x))}>{x}%OFF</button>)}</div><p className="calc-result">支払額 <b>{discountResult.toLocaleString()}円</b><small>値引き {Math.max(0, discountPrice - discountResult).toLocaleString()}円</small></p><div className="calc-tax"><select value={taxDirection} onChange={e => setTaxDirection(e.target.value as "add" | "remove")}><option value="add">税込みにする</option><option value="remove">税抜きに戻す</option></select><label>税率<input inputMode="decimal" value={tax} onChange={e => setTax(e.target.value)} /></label><b>{taxResult.toLocaleString()}円</b></div></div>}
+    {mode === "compare" && <div className="calculator-body"><div className="compare-unit"><span>基準単位：円／100</span><select value={unit} onChange={e => setUnit(e.target.value)}><option value="g">g</option><option value="ml">ml</option><option value="個">個</option><option value="枚">枚</option></select></div><CompareInput label="商品A" value={a} setValue={setA} unit={unit}/><CompareInput label="商品B" value={b} setValue={setB} unit={unit}/><div className="compare-result"><span>A：<b>{unitA ? Math.round(unitA * 10) / 10 : "—"}円</b>／100{unit}</span><span>B：<b>{unitB ? Math.round(unitB * 10) / 10 : "—"}円</b>／100{unit}</span><strong>{unitA && unitB ? (unitA < unitB ? "商品Aのほうがお得" : unitA > unitB ? "商品Bのほうがお得" : "同じ価格です") : "内容量を入力してください"}</strong></div></div>}
+    {mode === "total" && <div className="calculator-body"><p className="calc-note">価格を入力すると合計します。</p>{total.map((value, i) => <input key={i} className="total-input" inputMode="decimal" placeholder={`${i + 1}個目の価格`} value={value} onChange={e => setTotal(items => items.map((x, j) => j === i ? e.target.value : x))}/>) }<button className="wide secondary" onClick={() => setTotal(items => [...items, ""])}>＋ 価格を追加</button><p className="calc-result">合計 <b>{totalResult.toLocaleString()}円</b></p></div>}
+  </section>;
+}
+
+function CompareInput({ label, value, setValue, unit }: { label:string; value:{price:string;amount:string;count:string}; setValue:(value:{price:string;amount:string;count:string})=>void; unit:string }) { return <div className="compare-input"><strong>{label}</strong><label>価格<input inputMode="decimal" value={value.price} onChange={e => setValue({...value, price:e.target.value})}/></label><label>1つの量（{unit}）<input inputMode="decimal" value={value.amount} onChange={e => setValue({...value, amount:e.target.value})}/></label><label>個数<input inputMode="decimal" value={value.count} onChange={e => setValue({...value, count:e.target.value})}/></label></div>; }
